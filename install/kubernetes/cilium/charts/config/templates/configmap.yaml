@@ -126,6 +126,8 @@ data:
   custom-cni-conf: "{{ .Values.global.cni.customConf }}"
 {{- end }}
 
+  enable-bpf-clock-probe: {{ .Values.global.bpf.clockProbe | quote }}
+
   # If you want cilium monitor to aggregate tracing for packets, set this level
   # to "low", "medium", or "maximum". The higher the level, the less packets
   # that will be seen in monitor output.
@@ -295,7 +297,6 @@ data:
 {{- end }}
 {{- if and .Values.global.ipMasqAgent .Values.global.ipMasqAgent.enabled }}
   enable-ip-masq-agent: "true"
-  ip-masq-agent-sync-period: {{ .Values.global.ipMasqAgent.syncPeriod | quote }}
 {{- end }}
 
 {{- if .Values.global.encryption.enabled }}
@@ -435,12 +436,8 @@ data:
     {{.}}
   {{- end }}
 {{- end }}
-  # A space separated list of additional addresses for Hubble server to listen to (e.g. ":50051 :50052").
-{{- if and .Values.global.hubble.ui.enabled (not (has "0.0.0.0:50051" .Values.global.hubble.listenAddresses)) }}
-  hubble-listen-addresses: {{ append .Values.global.hubble.listenAddresses "0.0.0.0:50051" | join " " | quote }}
-{{- else }}
-  hubble-listen-addresses: {{ .Values.global.hubble.listenAddresses | join " " | quote }}
-{{- end }}
+  # An additional address for Hubble server to listen to (e.g. ":4244").
+  hubble-listen-address: {{ .Values.global.hubble.listenAddress | quote }}
 {{- end }}
 
   # A space separated list of iptables chains to disable when installing feeder rules.

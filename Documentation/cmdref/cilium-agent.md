@@ -54,6 +54,7 @@ cilium-agent [flags]
       --disable-iptables-feeder-rules strings         Chains to ignore when installing feeder rules.
       --egress-masquerade-interfaces string           Limit egress masquerading to interface selector
       --enable-auto-protect-node-port-range           Append NodePort range to net.ipv4.ip_local_reserved_ports if it overlaps with ephemeral port range (net.ipv4.ip_local_port_range) (default true)
+      --enable-bpf-clock-probe                        Enable BPF clock source probing for more efficient tick retrieval
       --enable-bpf-masquerade                         Masquerade packets from endpoints leaving the host with BPF instead of iptables
       --enable-endpoint-health-checking               Enable connectivity health checking between virtual endpoints (default true)
       --enable-endpoint-routes                        Use per endpoint routes instead of routing via cilium_host
@@ -99,7 +100,7 @@ cilium-agent [flags]
       --http-retry-timeout uint                       Time after which a forwarded but uncompleted request is retried (connection failures are retried immediately); defaults to 0 (never)
       --hubble-event-queue-size int                   Buffer size of the channel to receive monitor events.
       --hubble-flow-buffer-size int                   Maximum number of flows in Hubble's buffer. The actual buffer size gets rounded up to the next power of 2, e.g. 4095 => 4096 (default 4095)
-      --hubble-listen-addresses strings               List of additional addresses for Hubble server to listen to
+      --hubble-listen-address string                  An additional address for Hubble server to listen to, e.g. ":4244"
       --hubble-metrics strings                        List of Hubble metrics to enable.
       --hubble-metrics-server string                  Address to serve Hubble metrics on.
       --hubble-socket-path string                     Set hubble's socket path to listen for connections (default "/var/run/cilium/hubble.sock")

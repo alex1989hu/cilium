@@ -211,6 +211,9 @@ func init() {
 	flags.String(option.BPFRoot, "", "Path to BPF filesystem")
 	option.BindEnv(option.BPFRoot)
 
+	flags.Bool(option.EnableBPFClockProbe, false, "Enable BPF clock source probing for more efficient tick retrieval")
+	option.BindEnv(option.EnableBPFClockProbe)
+
 	flags.String(option.CGroupRoot, "", "Path to Cgroup2 filesystem")
 	option.BindEnv(option.CGroupRoot)
 
@@ -752,8 +755,8 @@ func init() {
 	flags.String(option.HubbleSocketPath, defaults.HubbleSockPath, "Set hubble's socket path to listen for connections")
 	option.BindEnv(option.HubbleSocketPath)
 
-	flags.StringSlice(option.HubbleListenAddresses, []string{}, "List of additional addresses for Hubble server to listen to")
-	option.BindEnv(option.HubbleListenAddresses)
+	flags.String(option.HubbleListenAddress, "", `An additional address for Hubble server to listen to, e.g. ":4244"`)
+	option.BindEnv(option.HubbleListenAddress)
 
 	flags.Int(option.HubbleFlowBufferSize, 4095, "Maximum number of flows in Hubble's buffer. The actual buffer size gets rounded up to the next power of 2, e.g. 4095 => 4096")
 	option.BindEnv(option.HubbleFlowBufferSize)
@@ -1096,6 +1099,7 @@ func initEnv(cmd *cobra.Command) {
 			log.WithError(err).Fatal("Failed to initialize NodePort addrs")
 		}
 	}
+	initClockSourceOption()
 	initSockmapOption()
 
 	if option.Config.Masquerade && option.Config.EnableBPFMasquerade {
@@ -1505,6 +1509,20 @@ func initSockmapOption() {
 	}
 	log.Warn("BPF Sock ops not supported by kernel. Disabling '--sockops-enable' feature.")
 	option.Config.SockopsEnable = false
+}
+
+func initClockSourceOption() {
+	option.Config.ClockSource = option.ClockSourceKtime
+	if !option.Config.DryMode && option.Config.EnableBPFClockProbe {
+		if h := probes.NewProbeManager().GetHelpers("xdp"); h != nil {
+			if _, ok := h["bpf_jiffies64"]; ok {
+				t, err := bpf.GetJtime()
+				if err == nil && t > 0 {
+					option.Config.ClockSource = option.ClockSourceJiffies
+				}
+			}
+		}
+	}
 }
 
 func initKubeProxyReplacementOptions() {

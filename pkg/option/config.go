@@ -267,6 +267,9 @@ const (
 	// Masquerade are the packets from endpoints leaving the host
 	Masquerade = "masquerade"
 
+	// EnableBPFClockProbe selects a more efficient source clock (jiffies vs ktime)
+	EnableBPFClockProbe = "enable-bpf-clock-probe"
+
 	// Masquerade packets from endpoints leaving the host with BPF instead of iptables
 	EnableBPFMasquerade = "enable-bpf-masquerade"
 
@@ -725,8 +728,8 @@ const (
 	// HubbleSocketPath specifies the UNIX domain socket for Hubble server to listen to.
 	HubbleSocketPath = "hubble-socket-path"
 
-	// HubbleListenAddresses specifies addresses for Hubble server to listen to.
-	HubbleListenAddresses = "hubble-listen-addresses"
+	// HubbleListenAddress specifies address for Hubble server to listen to.
+	HubbleListenAddress = "hubble-listen-address"
 
 	// HubbleFlowBufferSize specifies the maximum number of flows in Hubble's buffer.
 	HubbleFlowBufferSize = "hubble-flow-buffer-size"
@@ -968,7 +971,7 @@ var HelpFlagSections = []FlagsSection{
 		Flags: []string{
 			EnableHubble,
 			HubbleSocketPath,
-			HubbleListenAddresses,
+			HubbleListenAddress,
 			HubbleFlowBufferSize,
 			HubbleEventQueueSize,
 			HubbleMetricsServer,
@@ -1450,6 +1453,7 @@ type DaemonConfig struct {
 	// leaving the host.
 	Masquerade             bool
 	EnableBPFMasquerade    bool
+	EnableBPFClockProbe    bool
 	EnableIPMasqAgent      bool
 	IPMasqAgentConfigPath  string
 	InstallIptRules        bool
@@ -1668,6 +1672,9 @@ type DaemonConfig struct {
 	// EnableSessionAffinity enables a support for service sessionAffinity
 	EnableSessionAffinity bool
 
+	// Selection of BPF main clock source (ktime vs jiffies)
+	ClockSource BPFClockSource
+
 	// excludeLocalAddresses excludes certain addresses to be recognized as
 	// a local address
 	excludeLocalAddresses []*net.IPNet
@@ -1733,8 +1740,8 @@ type DaemonConfig struct {
 	// HubbleSocketPath specifies the UNIX domain socket for Hubble server to listen to.
 	HubbleSocketPath string
 
-	// HubbleListenAddresses specifies addresses for Hubble to listen to.
-	HubbleListenAddresses []string
+	// HubbleListenAddress specifies address for Hubble to listen to.
+	HubbleListenAddress string
 
 	// HubbleFlowBufferSize specifies the maximum number of flows in Hubble's buffer.
 	HubbleFlowBufferSize int
@@ -2226,6 +2233,7 @@ func (c *DaemonConfig) Populate() {
 	c.LoopbackIPv4 = viper.GetString(LoopbackIPv4)
 	c.Masquerade = viper.GetBool(Masquerade)
 	c.EnableBPFMasquerade = viper.GetBool(EnableBPFMasquerade)
+	c.EnableBPFClockProbe = viper.GetBool(EnableBPFClockProbe)
 	c.EnableIPMasqAgent = viper.GetBool(EnableIPMasqAgent)
 	c.IPMasqAgentConfigPath = viper.GetString(IPMasqAgentConfigPath)
 	c.InstallIptRules = viper.GetBool(InstallIptRules)
@@ -2273,6 +2281,8 @@ func (c *DaemonConfig) Populate() {
 	if err := c.calculateBPFMapSizes(); err != nil {
 		log.Fatal(err)
 	}
+
+	c.ClockSource = ClockSourceKtime
 
 	// toFQDNs options
 	// When the poller is enabled, the default MinTTL is lowered. This is to
@@ -2422,7 +2432,7 @@ func (c *DaemonConfig) Populate() {
 	// Hubble options.
 	c.EnableHubble = viper.GetBool(EnableHubble)
 	c.HubbleSocketPath = viper.GetString(HubbleSocketPath)
-	c.HubbleListenAddresses = viper.GetStringSlice(HubbleListenAddresses)
+	c.HubbleListenAddress = viper.GetString(HubbleListenAddress)
 	c.HubbleFlowBufferSize = viper.GetInt(HubbleFlowBufferSize)
 	c.HubbleEventQueueSize = viper.GetInt(HubbleEventQueueSize)
 	if c.HubbleEventQueueSize == 0 {

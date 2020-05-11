@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
@@ -84,13 +83,6 @@ func (d *Daemon) launchHubble() {
 		logger.Info("Hubble server is disabled")
 		return
 	}
-	addresses := option.Config.HubbleListenAddresses
-	for _, address := range addresses {
-		// TODO: remove warning once mutual TLS has been implemented
-		if !strings.HasPrefix(address, "unix://") {
-			logger.WithField("address", address).Warn("Hubble server will be exposing its API insecurely on this address")
-		}
-	}
 
 	payloadParser, err := parser.New(d, d, d, ipcache.IPIdentityCache, d)
 	if err != nil {
@@ -131,9 +123,12 @@ func (d *Daemon) launchHubble() {
 	}()
 
 	// configure another hubble instance that serve fewer gRPC services
-	if len(addresses) > 0 {
+	address := option.Config.HubbleListenAddress
+	if address != "" {
+		// TODO: remove warning once mutual TLS has been implemented
+		logger.WithField("address", address).Warn("Hubble server will be exposing its API insecurely on this address")
 		srv, err := server.NewServer(logger,
-			serveroption.WithListeners(addresses),
+			serveroption.WithTCPListener(address),
 			serveroption.WithHealthService(),
 			serveroption.WithObserverService(d.hubbleObserver),
 		)
@@ -141,7 +136,7 @@ func (d *Daemon) launchHubble() {
 			logger.WithError(err).Error("Failed to initialize Hubble server")
 			return
 		}
-		logger.WithField("addresses", addresses).Info("Starting Hubble server")
+		logger.WithField("address", address).Info("Starting Hubble server")
 		if err := srv.Serve(); err != nil {
 			logger.WithError(err).Error("Failed to start Hubble server")
 			return
